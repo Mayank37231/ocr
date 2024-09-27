@@ -1,44 +1,47 @@
-import re
-
-import pytesseract
-import streamlit as st
+import torch
+from transformers import VisionEncoderDecoderModel, AutoTokenizer
 from PIL import Image
+import streamlit as st
 
+# Load the GOT model and tokenizer
+model = VisionEncoderDecoderModel.from_pretrained("model_got")
+tokenizer = AutoTokenizer.from_pretrained("model_got")
 
-pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+model.to(device)
 
-# Function to extract text from image
-def extract_text_from_image(image):
-    img = Image.open(image)
-    text = pytesseract.image_to_string(img, lang='eng+hin')  # OCR for English and Hindi
+# Function to load and preprocess the image
+def load_image(image_path):
+    image = Image.open(image_path).convert("RGB")
+    return image
+
+# Function to perform OCR using the GOT model
+def ocr_image(image):
+    # Preprocess and convert the image for the model
+    pixel_values = tokenizer(image, return_tensors="pt").pixel_values
+    pixel_values = pixel_values.to(device)
+
+    # Generate the OCR text
+    outputs = model.generate(pixel_values)
+    text = tokenizer.batch_decode(outputs, skip_special_tokens=True)[0]
     return text
 
-# Function to highlight keyword matches in the extracted text
-def highlight_keywords(text, keyword):
-    highlighted_text = re.sub(f'({keyword})', r'**\1**', text, flags=re.IGNORECASE)
-    return highlighted_text
-
-# Streamlit UI
-st.title("OCR Image Text Extraction & Keyword Search")
-st.write("Upload an image containing text, extract the text, and search for specific keywords.")
-
-# Step 1: Image Upload
-uploaded_image = st.file_uploader("Choose an image file", type=["png", "jpg", "jpeg"])
+# Streamlit web app for image upload and OCR processing
+st.title("OCR Web App - General OCR Theory Model")
+uploaded_image = st.file_uploader("Upload an Image", type=['jpeg', 'png', 'jpg'])
 
 if uploaded_image is not None:
-    # Step 2: Extract text from the uploaded image
-    with st.spinner("Extracting text..."):
-        extracted_text = extract_text_from_image(uploaded_image)
-    st.write("### Extracted Text")
-    st.text_area("Extracted Text", extracted_text, height=300)
+    image = load_image(uploaded_image)
+    st.image(image, caption="Uploaded Image", use_column_width=True)
 
-    # Step 3: Keyword Search
-    st.write("### Search within Extracted Text")
-    search_keyword = st.text_input("Enter a keyword to search for:")
+    extracted_text = ocr_image(image)
+    st.write("**Extracted Text:**")
+    st.write(extracted_text)
 
-    if search_keyword:
-        # Highlighting the matches in the extracted text
-        highlighted_text = highlight_keywords(extracted_text, search_keyword)
-        st.write("### Search Results (Highlighted Matches)")
-        st.markdown(highlighted_text, unsafe_allow_html=True)
+    # Keyword search
+    keyword = st.text_input("Enter a keyword to search:")
+    if keyword:
+        highlighted_text = extracted_text.replace(keyword, f"**{keyword}**")
+        st.write(highlighted_text)
+
 
