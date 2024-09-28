@@ -1,6 +1,10 @@
 import pytesseract
 from PIL import Image
 import streamlit as st
+import os
+
+# Set the path for the Tesseract executable
+pytesseract.pytesseract.tesseract_cmd = '/app/.apt/usr/bin/tesseract'
 
 # Function to load and preprocess the image
 def load_image(image_path):
