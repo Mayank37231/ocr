@@ -1,4 +1,6 @@
-torch
-transformers
-Pillow
-streamlit
+streamlit==1.38.0
+pytesseract==0.3.10
+Pillow==10.0.0
+transformers==4.45.1
+torch==2.0.1
+numpy==1.24.4
