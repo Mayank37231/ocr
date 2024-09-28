@@ -1,34 +1,20 @@
-import torch
-from transformers import VisionEncoderDecoderModel, AutoTokenizer
+import pytesseract
 from PIL import Image
 import streamlit as st
-
-# Load the GOT model and tokenizer
-model = VisionEncoderDecoderModel.from_pretrained("nlpconnect/vit-gpt2-image-captioning")
-tokenizer = AutoTokenizer.from_pretrained("nlpconnect/vit-gpt2-image-captioning")
-
-
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model.to(device)
 
 # Function to load and preprocess the image
 def load_image(image_path):
     image = Image.open(image_path).convert("RGB")
     return image
 
-# Function to perform OCR using the GOT model
+# Function to perform OCR using Tesseract
 def ocr_image(image):
-    # Preprocess and convert the image for the model
-    pixel_values = tokenizer(image, return_tensors="pt").pixel_values
-    pixel_values = pixel_values.to(device)
-
-    # Generate the OCR text
-    outputs = model.generate(pixel_values)
-    text = tokenizer.batch_decode(outputs, skip_special_tokens=True)[0]
-    return text
+    # Perform OCR using pytesseract
+    extracted_text = pytesseract.image_to_string(image)
+    return extracted_text
 
 # Streamlit web app for image upload and OCR processing
-st.title("OCR Web App - General OCR Theory Model")
+st.title("OCR Web App - Tesseract OCR")
 uploaded_image = st.file_uploader("Upload an Image", type=['jpeg', 'png', 'jpg'])
 
 if uploaded_image is not None:
@@ -42,7 +28,12 @@ if uploaded_image is not None:
     # Keyword search
     keyword = st.text_input("Enter a keyword to search:")
     if keyword:
-        highlighted_text = extracted_text.replace(keyword, f"**{keyword}**")
+        # Convert both keyword and text to lowercase for case-insensitive search
+        extracted_text_lower = extracted_text.lower()
+        keyword_lower = keyword.lower()
+
+        # Highlight all occurrences of the keyword (case-insensitive)
+        highlighted_text = extracted_text_lower.replace(keyword_lower, f"**{keyword}**")
+        
+        # Display the result
         st.write(highlighted_text)
-
-
